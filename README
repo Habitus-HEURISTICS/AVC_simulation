@@ -1,0 +1,6 @@
+
+aPRAM files: Files necessary for the simulation of populations.
+
+Decision framework: Classes for defining Decisions and Influences, i.e. manipulating decision probabilities.
+
+Models: Specific simulation models that use aPRAM and Decisions to some specific end, e.g. a crop selection model or a harvest timing model.
