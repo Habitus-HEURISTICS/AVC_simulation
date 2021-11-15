@@ -1,0 +1,17 @@
+Todo list:
+
+1. Crop selection model has a bug (or a feature?). The success_adjustment method reduces the probability of planting a crop you failed at by three times more than it increases the probability of planting a crop you succeeded at. This is just how the probability redistribution works. If we don't like it, we need to split the Decision up into two parts, success_adjustment and failure_adjustment, and give the influences different rates.
+
+2. kwargs and args between Decisions/Influences not good
+
+3. Clamping should be temporary.
+
+4. Crop maturity, labor and harvester availability, birds and rains should all be at least semi-realistic -- reading project for someone in Mihai's group?
+
+5. If we have real marketplace data, it needs to be added to the map and an Influence needs to be added to crop selection.
+
+6. The map and plotting slow things down very badly.
+
+7. One last rule from ZST (gendered follow the leader) but I won't add it with the for loops.
+
+8. Test crop selection rules against data from Dr. Fall.
