@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib as mpl
 
+from decision_utilities import ps, row_sums, col_sums, row_margins, col_margins, row_renorm, index2onehot, onehot2index, row_sample, ged, ternary
 
 
 class Decision ():
@@ -91,6 +92,10 @@ class Decision ():
         
         self.probs = self.get_init_probs(**self.funargs)
            
+        self.update_mask()
+
+
+    def update_mask (self):
         if self.get_mask is not None:
             self.mask = self.get_mask(**self.funargs)
             # check the form
@@ -102,6 +107,7 @@ class Decision ():
         else:
             self.mask = None
             self.clamped_probs = None
+
         
     
     def clamp_probs (self,error_check=True): 
@@ -144,7 +150,7 @@ class Decision ():
         if shuffle: rng.shuffle(self.influences)
         for infl in self.influences:
             infl.move_p1()
-            print(self.probs[0])
+            
             
             
     def decision (self, form = 'index', unmasked_only = False):
@@ -239,10 +245,15 @@ class Influence () :
 class Experiment ():
     def __init__ (self, decision, k, m, fun, x ):
         self.decision = decision
+        # k is the number of replicates
         self.k = k
+        # m is the number of times each influence acts within a replicate
         self.m = m
+        # x is a list of attributes of the decision to report on
         self.x = x
+        # fun is the "inner loop" function that activates influences and calculates things to report
         self.fun = fun
+        # report is a list of lists, each inner list contains values of attributes in x
         self.report = []
         
     

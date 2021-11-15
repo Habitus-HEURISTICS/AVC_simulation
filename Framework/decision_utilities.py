@@ -15,6 +15,7 @@ from numpy.random import default_rng
 rng = default_rng(1108) # stuff for random sampling; fix random seed
 import pandas as pd
 
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib as mpl
@@ -40,6 +41,9 @@ def row_margins (a):
 
 def col_margins (a):
     return np.sum(a,axis=0)/a.shape[0]
+
+def row_renorm (a):
+    return a / (row_sums(a)[:,np.newaxis])
 
 def index2onehot (index, shape):
     ''' index is an np.array of length r that holds indices between 0 and c - 1.  
@@ -82,13 +86,38 @@ def ged (p0, p1):
     different distance measures than euclidean distance but one could also use 
     the more familiar np.sum((p0-p1)**2,axis=1)**.5 . '''
     
-    return np.linalg.norm(a0-a1, axis = 1)
+    return np.linalg.norm(p0-p1, axis = 1)
+
+def move_away (probs, index):
+    n = probs.shape[1] - 1
+    x = copy.copy(probs)
+    redistribute = (x[index][:,np.newaxis])/n
+    x += redistribute
+    x[index]=0
+    return x
+
+#%%
+mpl.rcParams['figure.dpi'] = 200
+mpl.rcParams['figure.figsize'] = (1.5,1.5)
+plt.rcParams.update({'font.size':5})
+    
+
+def hist (x,bins=25,ticks=8):
+    plt.locator_params(axis='x', nbins=ticks)
+    plt.rcParams.update({'font.size':5})
+    plt.hist(x,bins=bins)
+
+#%%
 
 
 def plot_ternary (vertex_labels, points, special_points = None, color_by=None, 
                   color_by_label=None, bounds = None, figsize = (4,4)):
+    
+    ''' wraps Marc Harper's python-ternary package https://github.com/marcharper/python-ternary'''
+    
     mpl.rcParams['figure.dpi'] = 200
     mpl.rcParams['figure.figsize'] = figsize
+    
     
     ### Scatter Plot
     scale = 1.0

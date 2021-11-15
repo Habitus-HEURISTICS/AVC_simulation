@@ -1,6 +1,11 @@
 
-aPRAM files: Files necessary for the simulation of populations.
-
-Decision framework: Classes for defining Decisions and Influences, i.e. manipulating decision probabilities.
+Framework files: Files necessary for the simulation of populations, the making of decisions and the running of experiments.
+	- pop_classes : Everything related to initializing and maintaining a Pop, including Columns, Rules and Params. I kept Rules in this file rather than in decision_classes because Rules are responsible for non-cognitive "external" or "nature" behavior, like market fluctuations and seasons changing.
+	- decision_classes and decision_utilities : Everything you need to simulate the decision that a population member makes, including Influences, as well as to evaluate models, including Experiments.
 
 Models: Specific simulation models that use aPRAM and Decisions to some specific end, e.g. a crop selection model or a harvest timing model.
+	- global_pop : Sets up the population used by all the models. This is imported into all the model files so everybody accesses the same thing. Also home to a lot of fake data.
+	- pipeline : This file runs the models that change pop columns. It's also where you should run Rules that govern Params, e.g. updating the season, if you want to do that. 
+	- crop_selection : This file contains the Decision and Influences for selecting a crop. It references the success and credit files which have a lot of made up assumptions.
+	- harvest_timing : This file has the Decision for when to harvest. It currently has more stuff in it than crop_selection because I haven't decomposed the functions into their own relevant files (if I did, they would be in files called 'harvester', 'labor', etc.) For now I shamelessly fake data for one season.
+	- Functions : This is a folder. Inside the folder are files that contain auxiliary functions about things like credit, seasons, crop success, timing and plotting.
