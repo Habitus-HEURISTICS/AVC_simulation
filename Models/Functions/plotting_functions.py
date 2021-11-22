@@ -1,6 +1,4 @@
 # Plotting functions.
-# Notes: I keep plotnine commented out because its load time is huge.
-
 
 import plotnine
 from plotnine import *

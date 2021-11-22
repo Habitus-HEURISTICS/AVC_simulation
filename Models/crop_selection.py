@@ -6,6 +6,7 @@ rng = default_rng() # stuff for random sampling
 import sys
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from sklearn.neighbors import NearestNeighbors
 
 _path = "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/"
 sys.path.insert(1, "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/Framework/")
@@ -105,6 +106,44 @@ def follow_the_education (decision,**kwargs):
 		    new_probs[cohort.members] = decision.probs[i]
     return new_probs
 
+
+def follow_the_neighbor (decision,**kwargs):
+    nbrs = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(pop.xy.val)
+    distances, indices = nbrs.kneighbors(pop.xy.val)
+    i = indices[:, 1]
+    # return the decision probabilities for the ith cohort member
+    return decision.probs[i, :]
+
+
+def follow_the_gender_leadership (cohort,decision,**kwargs):
+    pop = decision.pop
+    # Get all leaders
+    leaders = np.where(pop.leader.val[cohort.members] == 1)
+    # Get leaders based on gender
+    male_leader = np.where((pop.leader.val[cohort.members] == 1) & (pop.gender.val[cohort.members] == "male"))
+    female_leader = np.where((pop.leader.val[cohort.members] == 1) & (pop.gender.val[cohort.members] == "female"))
+    
+    # Get the nearest male leader
+    m_nbrs = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(pop.xy.val[male_leader], male_leader)
+    _, indices = m_nbrs.kneighbors(pop.xy.val)
+    indices[male_leader, 1] = indices[male_leader, 0]
+    indices = indices[:, 1]
+    
+    # Get the nearest female leader
+    f_nbrs = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(pop.xy.val[female_leader], female_leader)
+    _, f_indices = f_nbrs.kneighbors(pop.xy.val)
+    f_indices[female_leader, 1] = f_indices[female_leader, 0]
+    f_indices = f_indices[:, 1]
+    
+    # Combine the nearest leader to make men follow male leaders, and women follow female leaders
+    indices[np.where(pop.gender.val[cohort.members] == "female")] = f_indices[np.where(pop.gender.val[cohort.members] == "female")]
+    for k in range(len(leaders[0])):
+        indices[np.where(indices == k)] = leaders[0][k]
+    
+    # return the decision probabilities for the ith cohort member
+    return decision.probs[indices] 
+    
+
 hd.make_influence(get_destinations = follow_the_leadership, rate = .1)
 cd.make_influence(get_destinations = follow_the_leadership, rate = .1)
 r.make_influence(get_destinations = follow_the_leadership, rate = .1)
@@ -113,7 +152,9 @@ hd.make_influence(get_destinations = follow_the_education, rate = .1)
 cd.make_influence(get_destinations = follow_the_education, rate = .1)
 r.make_influence(get_destinations = follow_the_education, rate = .1)
 
-
+hd.make_influence(get_destinations = follow_the_neighbor, rate = .1)
+cd.make_influence(get_destinations = follow_the_neighbor, rate = .1)
+r.make_influence(get_destinations = follow_the_neighbor, rate = .1)
 
 
 

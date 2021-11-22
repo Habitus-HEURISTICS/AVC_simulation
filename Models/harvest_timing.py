@@ -2,7 +2,7 @@ import copy
 import pandas as pd
 import numpy as np
 from numpy.random import default_rng
-rng = default_rng() # stuff for random sampling
+rng = default_rng(10) # stuff for random sampling
 import sys
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -24,21 +24,23 @@ from timing_functions import *
 # Making up data about availability and crop maturity -- everything is the same for every farmer
 # Note: crop maturity should get passed to us from pipeline.py by a column in pop
 #       and harvesters, labor, birds and rains should probably all be Params governed by Rules
-season_bins = get_harvest_bins(pop.season.val, pop.size)
+season_bins = get_season_bins(pop.season.val, pop.size)
+harvesters, labor, birds, rains = np.zeros_like(season_bins), np.zeros_like(season_bins), np.zeros_like(season_bins),  np.zeros_like(season_bins)
+hdat_weeks = DOY_to_bin(pop.hdat.val)
+earliest_crop = min(hdat_weeks)
+latest_crop = max(hdat_weeks)
 
-harvesters, labor, birds, rains = season_bins.copy(), season_bins.copy(), np.zeros_like(season_bins),  np.zeros_like(season_bins)
-harvesters[:, 21:26] = [4,5,3,1,1]
-harvesters[:, 26:] = 0
-labor[:, 21:24] = 0 # Labor available the last week of the season plus two weeks
-labor[:, 25:28] = [5,4,3] # Labor available the last week of the season plus two weeks
 
-birds[24:27] = 1 # Make up when birds will arrive
-rains[26:28] = 1 # Make up when rains will arrive
+harvesters[:, earliest_crop - 3: earliest_crop + 1] = [4,5,3,1]
+labor[:, latest_crop - 4 : latest_crop] = [4,5,4,3] # Labor available the last week of the season plus two weeks
 
-crop_maturity = np.zeros((pop.size, len(season_bins[0,:]))) 
-crop_maturity[:, 20:28] = [1,2,6,8,8,6,2,1] # Making up data about crop maturity
-initial_probs = row_renorm(crop_maturity) # Initial probability is crop maturity, but we might want to change this
+birds[:, latest_crop - 2:latest_crop - 1] = 1 # Make up when birds will arrive
+rains[:, latest_crop - 1:latest_crop] = 1 # Make up when rains will arrive
 
+crop_quality = np.zeros((pop.size, len(season_bins[0,:]))) 
+for hdat_week in hdat_weeks:
+    crop_quality[:, (hdat_week - 3): (hdat_week + 3)] = [2,4,6,8,6,4] # Faking crop quality around the predicted harvest week
+initial_probs = row_renorm(crop_quality) # Initial probability is crop quality -- you're very unlikely to harvest before or after peak quality
 
 # Making up data about cost and area
 harvester_rate = 0.5 # Half a day per hectare for a harvester
@@ -56,7 +58,7 @@ def get_init_probs():
     return initial_probs
 
 def can_harvest():
-    return np.logical_or(harvesters.astype(bool), labor.astype(bool))
+    return np.logical_and(np.logical_or(harvesters.astype(bool), labor.astype(bool)), season_bins) # Because you have to harvest within the harvest period
 
 def cant_harvest():
     return np.invert(can_harvest())
@@ -64,7 +66,7 @@ def cant_harvest():
 def set_small(**kwargs):
     probs = kwargs.get('probs')
     mask = kwargs.get('mask')
-    probs[mask] = 0.01
+    probs[mask] = 0.0001
     return probs
 
 harvest_timing = Decision(
@@ -103,7 +105,7 @@ def harvest_duration(**kwargs):
 
     return row_renorm(lscore + hscore)
 
-harvest_timing.make_influence(
+hdur = harvest_timing.make_influence(
     get_destinations = harvest_duration,
     rate = .5
 )
@@ -111,16 +113,23 @@ harvest_timing.make_influence(
 
 # Hubert's code follows:
 
-def avoid_birds_and_rains(**kwargs):
+def avoid_birds_and_rains(decision, **kwargs):
     critical_period = np.logical_or(birds, rains) # When birds come or it rains (High chance to lose my grains)
-    first_week_bird_or_rain = np.where(critical_period==True)[0][0] # Choose the week birds or rains apear for the first time
-    weeks_before_critical_period = np.zeros_like(season_bins)
-    weeks_before_critical_period[:, :first_week_bird_or_rain] = 1 # I want to harvest in any week before birds or rains come
-    return row_renorm(weeks_before_critical_period)
+    if critical_period.any():
+        weeks_before_critical_period = np.zeros_like(season_bins)
+        try:
+            br_indices = np.where(critical_period == True)
+            first_week_bird_or_rain = br_indices[1][0] # Choose the week birds or rains apear for the first time
+            weeks_before_critical_period[:, :first_week_bird_or_rain] = 1 # I want to harvest in any week before birds or rains come
+        except: 
+            pass
+        return row_renorm(weeks_before_critical_period)
+    else:
+        return decision.probs
 
-harvest_timing.make_influence(
+abr = harvest_timing.make_influence(
     get_destinations = avoid_birds_and_rains,
-    rate = .5
+    rate = .8
 )
 
 

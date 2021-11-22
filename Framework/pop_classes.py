@@ -16,13 +16,12 @@ from numpy.random import default_rng
 rng = default_rng() # stuff for random sampling
 import pandas as pd
 
-# from plotnine import *
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib as mpl
 
-import plotnine
-from plotnine import *
+# import plotnine
+# from plotnine import *
 
 import ternary
 
