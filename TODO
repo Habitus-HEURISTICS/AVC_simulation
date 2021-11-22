@@ -6,12 +6,12 @@ Todo list:
 
 3. Clamping should be temporary.
 
-4. Crop maturity, labor and harvester availability, birds and rains should all be at least semi-realistic -- reading project for someone in Mihai's group?
+4. Test crop selection rules against data from Dr. Fall -- turns out we have more data, just need to organize it and bin it appropriately.
 
-5. If we have real marketplace data, it needs to be added to the map and an Influence needs to be added to crop selection.
+5. Make it easier to add / remove crops and regions; right now you have to do it manually. I'm not sure there's a way around this, to be able to for example switch between rice/not rice and rice/onions/tomatoes/other/nothing. 
 
-6. The map and plotting slow things down very badly.
+6. Sometimes you can write masks and influences such that there's no possible option for harvest. Need to supply a warning when this happens, otherwise you'll spend another four hours tracking down a "bug". 
 
-7. One last rule from ZST (gendered follow the leader) but I won't add it with the for loops.
+7. Limited resources for labor and for seed.
 
-8. Test crop selection rules against data from Dr. Fall.
+8. Market information: International prices and urban consumers

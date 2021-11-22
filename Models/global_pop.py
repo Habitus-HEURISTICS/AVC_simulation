@@ -2,25 +2,24 @@ import sys
 import pandas as pd
 import numpy as np
 from numpy.random import default_rng
-rng = default_rng()
-
-import plotly
-import shapefile # If you need to install this, it's in the pyshp package
+rng = default_rng(10)
 import matplotlib.pyplot as plt
-import shapely
-from shapely.geometry import Point # Point class
-from shapely.geometry import shape # shape() is a function to convert geo objects through the interface
+import csv
 
 _path = "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/"
 shape_path = "/Users/Allegra/Documents/Postdoc/habitus/modules/github/SRVzones/shapes/"
 sys.path.insert(1, "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/Framework/")
 sys.path.insert(1, "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/Models/Functions/")
+sys.path.insert(1, "/Users/Allegra/Documents/Postdoc/habitus/modules/github/AVC_simulation_origin/Data")
 
 from pop_classes import Pop
 from decision_utilities import ps, row_sums, col_sums, row_margins, col_margins, index2onehot, onehot2index, row_sample, ged, ternary
 from season_maintenance import *
 from credit import update_credit
-from plotting_functions import *
+from receive_dssat import get_harvest
+
+from plotting_functions import * # Keep this commented out unless you're plotting because plotnine takes forever to load
+from generate_locations import zone1, zone2, zone3, zone4, sf
 
 # Initialize pop  ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 n = 400                     # number of farms
@@ -28,71 +27,30 @@ pop = Pop(size=n)           # override pop
 
 
 # Get location information set up  ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-# Zhuoyu's code follows:
-sf = shapefile.Reader(shape_path + 'SN_LHZ_2021.shp')
-sf_LowerDelta = shapefile.Reader(shape_path + 'SRV_LowerDelta-polygon.shp')
-sf_MiddleValley_Matam = shapefile.Reader(shape_path + 'SRV_MiddleValley_Matam-polygon.shp')
-sf_MiddleValley_Podor = shapefile.Reader(shape_path + 'SRV_MiddleValley_Podor-polygon.shp')
-sf_UpperDelta = shapefile.Reader(shape_path + 'SRV_UpperDelta_Extended-polygon.shp')
-sf1, sf2, sf3, sf4 = sf_LowerDelta, sf_MiddleValley_Matam, sf_MiddleValley_Podor, sf_UpperDelta
-
-shape1, shape2, shape3, shape4 = sf1.shapes(), sf2.shapes(), sf3.shapes(), sf4.shapes() 
-zone1, zone2, zone3, zone4 = shape1[0], shape2[0], shape3[0], shape4[0]
-
-bounds1 = zone1.bbox
-xmin1, ymin1, xmax1, ymax1 = bounds1
-xext1 = xmax1 - xmin1
-yext1 = ymax1 - ymin1
-
-bounds2 = zone2.bbox
-xmin2, ymin2, xmax2, ymax2 = bounds2
-xext2 = xmax2 - xmin2
-yext2 = ymax2 - ymin2
-
-bounds3 = zone3.bbox
-xmin3, ymin3, xmax3, ymax3 = bounds3
-xext3 = xmax3 - xmin3
-yext3 = ymax3 - ymin3
-
-bounds4 = zone4.bbox
-xmin4, ymin4, xmax4, ymax4 = bounds4
-xext4 = xmax4 - xmin4
-yext4 = ymax4 - ymin4
-
-po = []
-
-def make_points(po, xmin, ymin, xext, yext, zone):
-	# generate a random x and y
-	x = xmin + rng.random() * xext
-	y = ymin + rng.random() * yext
-	point_to_check = (x, y)
-	if Point(point_to_check).within(shape(zone)):
-	    po.append(point_to_check)
-	return po
-
-while len(po) < n/4: po = make_points(po, xmin1, ymin1, xext1, yext1, zone1)
-while len(po) < n/2: po = make_points(po, xmin2, ymin2, xext2, yext2, zone2)
-while len(po) < (n/4 + n/2): po = make_points(po, xmin3, ymin3, xext3, yext3, zone3)
-while len(po) < n: po = make_points(po, xmin4, ymin4, xext4, yext4, zone4)
+# If you change the size of the population, you'll have to correct it and rerun generate_locations.py. I took this out of the main
+#    file because while Zhuoyu's code is excellent, the shapefile stuff is slow and we don't need it every time.
+fl = pd.read_csv(_path + "Data/farm_locations.csv", header = None)
+farm_locations = list(fl.apply(tuple, axis = 1))
 
 
 # Set up params ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 pop.make_param("season", 'hot/dry')
 season_param_rule = pop.make_rule(name = 'season_param_rule', fun = update_season, params = [pop.season])
 
+# Do this if you want to plot something on the map: 
 pop.make_param("zones", [zone1, zone2, zone3, zone4])
 pop.make_param("sf", sf)
 
 # Set up pop ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 # we'll have separate x and y columns
-pop.make_column('x',[i[0] for i in po[0:n]] )
-pop.make_column('y',[i[1] for i in po[0:n]] )
+pop.make_column('x',[i[0] for i in farm_locations[0:n]] )
+pop.make_column('y',[i[1] for i in farm_locations[0:n]] )
 
 xmax, ymax = max(pop.x.val), max(pop.y.val)
 halfway =  np.floor(xmax/2)
 # we'll also have a column of x,y pairs to facilitate measuring distances
-pop.make_column('xy',po)
+pop.make_column('xy',farm_locations)
 
 # Each farm belongs to a region
 number_to_region = {0: 'dagana', 1: 'podor', 2: 'matam', 3: 'other'}
@@ -181,4 +139,12 @@ pop.make_column('p_crop_success', np.zeros((pop.size,num_crops)))        # This 
 pop.make_column('crop_success', np.zeros((pop.size, num_crops)))         # The actual success of the selected crop, should come from DSSAT
 pop.make_column('harvest_times', np.zeros(pop.size))         # The actual success of the selected crop, should come from DSSAT
 
- 
+# Here's stuff that we might not run at initialization but because the "pipeline" is currently one inert file, that's how it works
+pop = get_harvest(pop)
+
+
+
+
+
+
+
